@@ -128,6 +128,57 @@ class Expo
     }
 
     /**
+     * Send a notification via the Expo Push Notifications Api.
+     * Difference between this and the notify function is that, this would divide the notification into batches
+     * of less than 100 to avoid the PUSH_TOO_MANY_NOTIFICATIONS error.
+     *
+     * @param array $interests
+     * @param array $data
+     * @param bool $debug
+     *
+     * @throws ExpoException
+     * @throws UnexpectedResponseException
+     *
+     * @return array|bool
+     */
+    public function batchedNotify(array $interests, array $data, $debug = false)
+    {
+        $postData = [];
+
+        if (count($interests) == 0) {
+            throw new ExpoException('Interests array must not be empty.');
+        }
+
+        // Gets the expo tokens for the interests
+        $recipients = $this->registrar->getInterests($interests);
+
+        foreach ($recipients as $token) {
+            $postData[] = $data + ['to' => $token];
+        }
+        
+        $postDataChunks = array_chunk($postData, 90);
+
+        $total_responses = [];
+	
+	    foreach ($postDataChunks as $postDataChunk) {
+            $ch = $this->prepareCurl();
+
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postDataChunk));
+
+            $response = $this->executeCurl($ch);
+            
+            array_push($total_responses, $response);
+        }
+        
+        // If the notification failed completely, throw an exception with the details
+        if ($debug && $this->failedCompletely($total_responses, $recipients)) {
+                throw ExpoException::failedCompletelyException($total_responses);
+        }
+
+        return $total_responses;
+    }
+
+    /**
      * Determines if the request we sent has failed completely
      *
      * @param array $response
