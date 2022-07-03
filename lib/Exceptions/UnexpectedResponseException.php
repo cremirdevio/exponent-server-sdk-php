@@ -16,7 +16,7 @@ class UnexpectedResponseException extends Exception
     public function __construct(
         $message = 'Unexpected response was received from Expo API.',
         $code = 500,
-        Throwable $previous = null
+        \Throwable $previous = null
     ) {
         parent::__construct($message, $code, $previous);
     }
