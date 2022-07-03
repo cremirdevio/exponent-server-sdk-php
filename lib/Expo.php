@@ -27,7 +27,7 @@ class Expo
      */
     private $registrar;
     
-    /** 
+    /**
      * @var string|null
      */
     private $accessToken = null;
@@ -82,7 +82,8 @@ class Expo
     /**
      * @param string|null $accessToken
      */
-    public function setAccessToken(string $accessToken = null) {
+    public function setAccessToken(string $accessToken = null)
+    {
         $this->accessToken = $accessToken;
     }
 
@@ -159,8 +160,8 @@ class Expo
         $postDataChunks = array_chunk($postData, 90);
 
         $total_responses = [];
-	
-	    foreach ($postDataChunks as $postDataChunk) {
+    
+        foreach ($postDataChunks as $postDataChunk) {
             $ch = $this->prepareCurl();
 
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postDataChunk));
@@ -172,10 +173,46 @@ class Expo
         
         // If the notification failed completely, throw an exception with the details
         if ($debug && $this->failedCompletely($total_responses, $recipients)) {
-                throw ExpoException::failedCompletelyException($total_responses);
+            throw ExpoException::failedCompletelyException($total_responses);
         }
 
         return $total_responses;
+    }
+
+    /**
+     * Chunk notifications into bits of required size
+     *
+     * @param array $message
+     *
+     * @return array $chunks
+     */
+    public function chunkNotifications(array $message, $interests)
+    {
+        $chunks = [];
+        
+        // Gets the expo tokens for the interests
+        $recipients = $this->registrar->getInterests($interests);
+
+        $count = 0;
+        $partialTo = [];
+        foreach ($recipients as $token) {
+            $partialTo[] = $token;
+            $count++;
+
+            if ($count >= 100) {
+                $partialMessage = $message + ['to' => $partialTo];
+                $chunks[] = $partialMessage;
+                $count = 0;
+                $partialTo = [];
+            }
+        }
+
+        if ($count) {
+            $partialMessage = $message + ['to' => $partialTo];
+            $chunks[] = $partialMessage;
+        }
+
+        return $chunks;
     }
 
     /**
@@ -236,7 +273,8 @@ class Expo
      *
      * @return null|resource
      */
-    private function handleWithUnexpectedResponse($response) {
+    private function handleWithUnexpectedResponse($response)
+    {
         if (is_array($response) && isset($response['body'])) {
             $errors = json_decode($response['body'])->errors ?? [];
 
