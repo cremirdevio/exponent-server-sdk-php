@@ -2,6 +2,7 @@
 
 namespace ExponentPhpSDK;
 
+use CurlHandle;
 use ExponentPhpSDK\Exceptions\ExpoException;
 use ExponentPhpSDK\Exceptions\UnexpectedResponseException;
 use ExponentPhpSDK\Repositories\ExpoFileDriver;
@@ -18,19 +19,19 @@ class Expo
      *
      * @var null|resource
      */
-    private $ch = null;
+    private CurlHandle $ch = null;
 
     /**
      * The registrar instance that manages the tokens
      *
      * @var ExpoRegistrar
      */
-    private $registrar;
+    private ExpoRegistrar $registrar;
     
     /**
      * @var string|null
      */
-    private $accessToken = null;
+    private string $accessToken = null;
 
     /**
      * Expo constructor.
@@ -130,53 +131,30 @@ class Expo
 
     /**
      * Send a notification via the Expo Push Notifications Api.
-     * Difference between this and the notify function is that, this would divide the notification into batches
-     * of less than 100 to avoid the PUSH_TOO_MANY_NOTIFICATIONS error.
+     * But this does not depend on the interests. It only expects the message to be sent.
      *
-     * @param array $interests
      * @param array $data
      * @param bool $debug
      *
      * @throws ExpoException
      * @throws UnexpectedResponseException
      *
-     * @return array|bool
+     * @return array
      */
-    public function batchedNotify(array $interests, array $data, $debug = false)
+    public function notifyWithMessage(array $data, bool $debug = false)
     {
-        $postData = [];
+        $ch = $this->prepareCurl();
 
-        if (count($interests) == 0) {
-            throw new ExpoException('Interests array must not be empty.');
-        }
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
 
-        // Gets the expo tokens for the interests
-        $recipients = $this->registrar->getInterests($interests);
+        $response = $this->executeCurl($ch);
 
-        foreach ($recipients as $token) {
-            $postData[] = $data + ['to' => $token];
-        }
-        
-        $postDataChunks = array_chunk($postData, 90);
-
-        $total_responses = [];
-    
-        foreach ($postDataChunks as $postDataChunk) {
-            $ch = $this->prepareCurl();
-
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postDataChunk));
-
-            $response = $this->executeCurl($ch);
-            
-            array_push($total_responses, $response);
-        }
-        
         // If the notification failed completely, throw an exception with the details
-        if ($debug && $this->failedCompletely($total_responses, $recipients)) {
-            throw ExpoException::failedCompletelyException($total_responses);
+        if ($debug && (count($response) !== count($data['to']))) {
+            throw ExpoException::failedCompletelyException($response);
         }
 
-        return $total_responses;
+        return $response;
     }
 
     /**
@@ -244,7 +222,7 @@ class Expo
      *
      * @throws ExpoException
      *
-     * @return null|resource
+     * @return CurlHandle|resource
      */
     private function prepareCurl()
     {
@@ -280,7 +258,7 @@ class Expo
         if (is_array($response) && isset($response['body'])) {
             $errors = json_decode($response['body'])->errors ?? [];
 
-            return $errors[0]->message ?? null;
+            return json_encode($errors);
         }
 
         return null;
@@ -291,7 +269,7 @@ class Expo
      *
      * @throws ExpoException
      *
-     * @return null|resource
+     * @return CurlHandle|resource
      */
     public function getCurl()
     {
