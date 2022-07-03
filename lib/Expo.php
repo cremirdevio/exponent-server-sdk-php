@@ -188,6 +188,8 @@ class Expo
      */
     public function chunkNotifications(array $message, $interests)
     {
+        // Ensure the message to property is unset
+        unset($message['to']);
         $chunks = [];
         
         // Gets the expo tokens for the interests
