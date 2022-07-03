@@ -143,6 +143,11 @@ class Expo
      */
     public function notifyWithMessage(array $data, bool $debug = false)
     {
+        // Check if notification is greater than 100
+        if (count($data['to']) > 100) {
+            throw new ExpoException('PUSH_TOO_MANY_NOTIFICATIONS');
+        }
+        
         $ch = $this->prepareCurl();
 
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
