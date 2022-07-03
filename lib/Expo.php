@@ -17,9 +17,9 @@ class Expo
     /**
      * cURL handler
      *
-     * @var null|resource
+     * @var CurlHandle|resource
      */
-    private CurlHandle $ch = null;
+    private CurlHandle $ch;
 
     /**
      * The registrar instance that manages the tokens
@@ -31,7 +31,7 @@ class Expo
     /**
      * @var string|null
      */
-    private string $accessToken = null;
+    private string|null $accessToken = null;
 
     /**
      * Expo constructor.
