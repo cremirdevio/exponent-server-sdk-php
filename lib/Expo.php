@@ -13,7 +13,7 @@ class Expo
      * The Expo Api Url that will receive the requests
      */
     const EXPO_BASE_URL = 'https://exp.host';
-    const BASE_API_URL  = self::EXPO_BASE_URL . '/api/v2/push';
+    const BASE_API_URL  = self::EXPO_BASE_URL . '/--/api/v2/push';
 
     /**
      * cURL handler
@@ -291,8 +291,8 @@ class Expo
     {
         $ticketIds = [];
         foreach ($tickets as $ticket) {
-            if ($ticket->id) {
-                $ticketIds[] = $ticket->id;
+            if ($ticket['id']) {
+                $ticketIds[] = $ticket['id'];
             }
         }
 
@@ -381,6 +381,9 @@ class Expo
             'body' => curl_exec($ch),
             'status_code' => curl_getinfo($ch, CURLINFO_HTTP_CODE)
         ];
+
+        // Check the status code
+        // 200, 400, 500
 
         $responseData = json_decode($response['body'], true)['data'] ?? null;
 
