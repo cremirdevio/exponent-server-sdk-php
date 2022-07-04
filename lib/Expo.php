@@ -281,6 +281,12 @@ class Expo
         return $numberOfFailures === $numberOfRecipients;
     }
 
+    /**
+     * Extract ticket ids from and array of tickets
+     *
+     * @param array $tickets
+     * @return array
+     */
     public function extractTicketIds(array $tickets) : array
     {
         $ticketIds = [];
