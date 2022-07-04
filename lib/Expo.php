@@ -12,7 +12,8 @@ class Expo
     /**
      * The Expo Api Url that will receive the requests
      */
-    const EXPO_API_URL = 'https://exp.host/--/api/v2/push/send';
+    const EXPO_BASE_URL = 'https://exp.host';
+    const BASE_API_URL  = self::EXPO_BASE_URL . '/api/v2/push';
 
     /**
      * cURL handler
@@ -115,11 +116,18 @@ class Expo
             $postData[] = $data + ['to' => $token];
         }
 
-        $ch = $this->prepareCurl();
+        $ch = $this->prepareCurl('send');
 
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData));
 
         $response = $this->executeCurl($ch);
+
+        // Check the integrity of the data returned
+        if (! is_array($response)) {
+            throw new UnexpectedResponseException(
+                $this->handleWithUnexpectedResponse($response)
+            );
+        }
 
         // If the notification failed completely, throw an exception with the details
         if ($debug && $this->failedCompletely($response, $recipients)) {
@@ -148,15 +156,54 @@ class Expo
             throw new ExpoException('PUSH_TOO_MANY_NOTIFICATIONS');
         }
         
-        $ch = $this->prepareCurl();
+        $ch = $this->prepareCurl('send');
 
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
 
         $response = $this->executeCurl($ch);
 
+        // Check the integrity of the data returned
+        if (! is_array($response)) {
+            throw new UnexpectedResponseException(
+                $this->handleWithUnexpectedResponse($response)
+            );
+        }
+
         // If the notification failed completely, throw an exception with the details
         if ($debug && (count($response) !== count($data['to']))) {
             throw ExpoException::failedCompletelyException($response);
+        }
+
+        return $response;
+    }
+
+     /**
+     * Fetch push notification receipts from Expo.
+     * Recommended 30 minutes after sending the notification.
+     *
+     * @param array $receiptsIds
+     *
+     * @throws ExpoException
+     * @throws UnexpectedResponseException
+     *
+     * @return array
+     */
+    public function getNotificationReceipts(array $receiptIds)
+    {
+        // Check if notification is greater than 100
+        if (count($receiptIds) > 1000) {
+            throw new ExpoException('PUSH_TOO_MANY_RECEIPTS');
+        }
+        
+        $ch = $this->prepareCurl('getReceipts');
+
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($receiptIds));
+
+        $response = $this->executeCurl($ch);
+
+        // If the notification failed completely, throw an exception with the details
+        if (!is_object($response)) {
+            throw new UnexpectedResponseException('Expected Expo to respond with a map from receipt IDs to receipts but received data of another type.');
         }
 
         return $response;
@@ -201,6 +248,18 @@ class Expo
     }
 
     /**
+     * Chunk notification's receipt ids to required size
+     * 
+     * @param array $receiptIds
+     * 
+     * @return array $receiptChunks
+     */
+    public function chunkNotificationReceiptIds(array $receiptChunks)
+    {
+        return array_chunk($receiptChunks, 1000);
+    }
+
+    /**
      * Determines if the request we sent has failed completely
      *
      * @param array $response
@@ -229,7 +288,7 @@ class Expo
      *
      * @return CurlHandle|resource
      */
-    private function prepareCurl()
+    private function prepareCurl(string $endpoint)
     {
         $ch = $this->getCurl();
 
@@ -243,7 +302,7 @@ class Expo
         }
 
         // Set cURL opts
-        curl_setopt($ch, CURLOPT_URL, self::EXPO_API_URL);
+        curl_setopt($ch, CURLOPT_URL, self::BASE_API_URL.'/'.$endpoint);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_POST, 1);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -306,12 +365,6 @@ class Expo
         ];
 
         $responseData = json_decode($response['body'], true)['data'] ?? null;
-
-        if (! is_array($responseData)) {
-            throw new UnexpectedResponseException(
-                $this->handleWithUnexpectedResponse($response)
-            );
-        }
 
         return $responseData;
     }
