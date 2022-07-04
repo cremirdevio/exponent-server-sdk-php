@@ -190,6 +190,7 @@ class Expo
      */
     public function getNotificationReceipts(array $receiptIds)
     {
+        $data = ['ids' => $receiptIds];
         // Check if notification is greater than 100
         if (count($receiptIds) > 1000) {
             throw new ExpoException('PUSH_TOO_MANY_RECEIPTS');
@@ -197,7 +198,7 @@ class Expo
         
         $ch = $this->prepareCurl('getReceipts');
 
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($receiptIds));
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
 
         $response = $this->executeCurl($ch);
 
@@ -384,6 +385,7 @@ class Expo
 
         // Check the status code
         // 200, 400, 500
+        // {"body":"{\"errors\":[{\"code\":\"VALIDATION_ERROR\",\"message\":\"\\\"value\\\" must be of type object.\",\"isTransient\":false}]}","status_code":400}
 
         $responseData = json_decode($response['body'], true)['data'] ?? null;
 
