@@ -281,6 +281,18 @@ class Expo
         return $numberOfFailures === $numberOfRecipients;
     }
 
+    public function extractTicketIds(array $tickets) : array
+    {
+        $ticketIds = [];
+        foreach ($tickets as $ticket) {
+            if ($ticket->id) {
+                $ticketIds[] = $ticket->id;
+            }
+        }
+
+        return $tickets;
+    }
+
     /**
      * Sets the request url and headers
      *
