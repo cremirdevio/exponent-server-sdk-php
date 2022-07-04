@@ -203,7 +203,7 @@ class Expo
         $response = $this->executeCurl($ch);
 
         // If the notification failed completely, throw an exception with the details
-        if (!is_object($response)) {
+        if (!is_array($response)) {
             throw new UnexpectedResponseException('Expected Expo to respond with a map from receipt IDs to receipts but received data of another type.');
         }
 
