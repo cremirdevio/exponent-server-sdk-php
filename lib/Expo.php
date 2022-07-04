@@ -297,7 +297,7 @@ class Expo
             }
         }
 
-        return $tickets;
+        return $ticketIds;
     }
 
     /**
